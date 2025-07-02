@@ -14,3 +14,9 @@ This tool allows you to batch download Substance 3D materials from any collectio
 - Access to the Adobe Substance Library (Adobe Subscription)
 - Valid IMS session ID
 - Collection ID
+
+## Screenshots
+
+![main_screenshot](project%20screenshots/main_screenshot.jpg)
+
+![verifying_filetype](project%20screenshots/verifying_filetype.jpg)
