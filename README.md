@@ -44,6 +44,6 @@ python main.py
 
 ## Screenshots
 
-![main_screenshot](project_screenshots/main_screenshot.jpg)
+![main_screenshot](.project_screenshots/main_screenshot.jpg)
 
-![verifying_filetype](project_screenshots/verifying_filetype.jpg)
+![verifying_filetype](.project_screenshots/verifying_filetype.jpg)
