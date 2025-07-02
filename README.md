@@ -15,25 +15,28 @@ This tool allows you to batch download Substance 3D materials from any collectio
 - Valid IMS session ID
 - Collection ID
 
-# Usage
+## Usage
 
-### Clone the repository:
+**Clone the repository:**
 
 ```bash
 git clone https://github.com/your-username/substance-assets-batch-downloader.git
+```
+```bash
 cd substance-assets-batch-downloader
 ```
-### Install Dependencies:
+
+**Install Dependencies:**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Update config.py:
+**Update config.py:**
 
-Navigate to config.py for more info about it.
+*Navigate to config.py for more info about it.*
 
-### Run:
+**Run:**
 
 ```bash
 python main.py
