@@ -17,6 +17,6 @@ This tool allows you to batch download Substance 3D materials from any collectio
 
 ## Screenshots
 
-![main_screenshot](project%20screenshots/main_screenshot.jpg)
+![main_screenshot](project_screenshots/main_screenshot.jpg)
 
-![verifying_filetype](project%20screenshots/verifying_filetype.jpg)
+![verifying_filetype](project_screenshots/verifying_filetype.jpg)
