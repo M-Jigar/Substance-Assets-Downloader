@@ -80,53 +80,35 @@ def get_user_assets(token: str) -> list:
     return purchased_assets
 
 
-def get_collection_data(collection_id: str) -> dict:
+def get_collection_data(collection_id: str, page: int, limit: int) -> dict:
 
-    items_all = []
-    page = 0
-    hasMore = "true"
+    payload = {
     
-    collection_title = None
+        "variables": {
+            "collectionId": collection_id,
+            "limit": limit,
+            "page": page,
+        },
 
-    # Increments page number and extends the main list while hasMore is true.
-    while hasMore == "true":
+        "query": COLLECTION_QUERY,
+    }
 
-        payload = {
-        
-            "variables": {
-                "collectionId": collection_id,
-                "limit": 100,
-                "page": page,
-            },
+    collection_json = error_handler_default(httpx.post('https://source-api.substance3d.com/beta/graphql', json=payload))
 
-            "query": COLLECTION_QUERY,
-        }
+    collection_title = collection_json['data']['collection']['title']
+    collection_total = collection_json['data']['collection']['assets']["total"]
 
-        collection_json = error_handler_default(httpx.post('https://source-api.substance3d.com/beta/graphql', json=payload))
-
-        if collection_title is None:
-            collection_title = collection_json['data']['collection']['title']
-
-        collection_total = collection_json['data']['collection']['assets']["total"]
-
-        items_onPage = collection_json['data']['collection']['assets']["items"]
-        items_all.extend(items_onPage)
-
-        hasMore = collection_json['data']['collection']['assets']["hasMore"]
-        page += 1
+    items_onPage = collection_json['data']['collection']['assets']["items"]
+    hasMore: bool = collection_json['data']['collection']['assets']["hasMore"]
 
     collection_data = {
         "collection_title": collection_title,
-        "collection_items": items_all,
         "collection_total": collection_total,
+        "collection_items": items_onPage,
+        "hasMore": hasMore,
     }
 
     return collection_data
-
-
-def verify_substanceMaterial(item_type: str) -> bool:
-
-    return True if item_type.lower() == 'substancematerial' else False
 
 
 def purchase_asset(token: str, asset_id: str) -> dict:
@@ -145,19 +127,10 @@ def purchase_asset(token: str, asset_id: str) -> dict:
     return reponse
 
 
-def download_material(url: str, token: str, output_dir: str, folder_name: str, file_name: str, file_size: int) -> None:
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-    }
+def download_attachment(url: str, token: str, file_name: str, file_path: str, file_size: int) -> None:
 
     with httpx.stream('GET', f"{url}?accessToken={token}", follow_redirects=True) as download_response:
-
         download_response.raise_for_status()
-        
-        file_path = os.path.join(output_dir, folder_name, file_name)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
         progress = tqdm(desc=file_name, total=file_size, unit='B', unit_scale=True, unit_divisor=1024, colour="green")  
 
         with open(file_path, "wb") as binaryfile:
