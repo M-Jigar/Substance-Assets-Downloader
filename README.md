@@ -6,7 +6,7 @@ This tool allows you to batch download Substance 3D materials from any collectio
 
 - Downloads assets from specified Adobe Substance collections
 - Verifies and purchases assets if not already owned
-- Only downloads materials in Substance format (.sbsar)
+- Option to download a specific or multiple asset types (Materials, Decals or Smart Materials)
 - Organizes files by collection name
 
 ## Requirements
