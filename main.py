@@ -1,19 +1,28 @@
-import ripper_functions
+import httpx
 import os
+import ripper_functions
 from config import OUTPUT_DIR, COLLECTION_IDS, IMS_SID, ASSET_TYPES
 
+default_headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            "Origin": "https://substance3d.adobe.com/",
+            "Referer": "https://substance3d.adobe.com/",
+}
+
+session = httpx.Client()
+session.headers.update(default_headers)
+session.cookies.set("ims_sid", IMS_SID)
 
 
-user_data = ripper_functions.get_user_data(ims_sid=IMS_SID)
+user_data = ripper_functions.get_user_data(session=session, ims_sid=IMS_SID)          # will also update session headers with the token
 user_name = user_data['name']
 user_id = user_data['userId']
 access_token = user_data['access_token']
 purchased_assets = user_data['purchased_assets']
 
 
-
 if COLLECTION_IDS:
-    for collection_index, collection_id in enumerate(COLLECTION_IDS[:1], start=1):
+    for collection_index, collection_id in enumerate(COLLECTION_IDS, start=1):
 
         page = 0
         hasMore = True
@@ -21,7 +30,7 @@ if COLLECTION_IDS:
 
         while hasMore == True: 
 
-            collection_data = ripper_functions.get_collection_data(collection_id=collection_id, page=page, limit=limit)
+            collection_data = ripper_functions.get_collection_data(session=session, collection_id=collection_id, page=page, limit=limit)
 
             collection_title = collection_data['collection_title']
             collection_total = collection_data['collection_total']
@@ -30,6 +39,7 @@ if COLLECTION_IDS:
             print(f"\n--------Collection {collection_index} of {len(COLLECTION_IDS)} | {collection_title} | Total: {collection_total} | Page {page} of {(collection_total + limit - 1) // limit}--------\n")
 
             for item_index, item in enumerate(collection_items, start=1):
+                cumulative_index = page * limit + item_index
                 
                 asset_name = item['title']
                 asset_id = item['id']
@@ -43,7 +53,7 @@ if COLLECTION_IDS:
 
                 # Purchasing Asset.
                 if asset_id not in purchased_assets:
-                    purchase_response = ripper_functions.purchase_asset(token=access_token, asset_id=asset_id)
+                    purchase_response = ripper_functions.purchase_asset(session=session , asset_id=asset_id)
 
                 attachment_list = item['attachments']
 
@@ -63,10 +73,11 @@ if COLLECTION_IDS:
                             print(f"Already exists, Skipped | {mat_filename}")
                             continue
                         else:
-                            print(f"Downloading {item_index}/{collection_total} | '{mat_filename}' | {asset_type} | size: {round(mat_file_size / (1024 * 1024), 2)} MB")
+                            print(f"Downloading {cumulative_index}/{collection_total} | '{mat_filename}' | {asset_type} | size: {round(mat_file_size / (1024 * 1024), 2)} MB")
                             os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
                         ripper_functions.download_attachment(
+                            session=session,
                             url=mat_download_url,
                             token=access_token,
 

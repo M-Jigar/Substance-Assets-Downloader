@@ -1,5 +1,4 @@
 import httpx
-import os
 from tqdm import tqdm
 
 from constants import USER_QUERY, PURCHASE_QUERY, COLLECTION_QUERY
@@ -9,33 +8,15 @@ from constants import USER_QUERY, PURCHASE_QUERY, COLLECTION_QUERY
 
 def error_handler_default(response: httpx.Response):
 
-    msg = {
-        400: "Bad request — possibly invalid payload or missing ID.",
-        401: "Unauthorized — check your access token.",
-        403: "Forbidden — token might lack permission.",
-        404: "Not Found — the resource doesn't exist.",
-        429: "Rate limited — slow down your requests.",
-        500: "Internal Server Error — server is down.",
-    }
-
     try:
         response.raise_for_status()
         return response.json()
     
-    except httpx.HTTPStatusError as e:
-
-        if response.status_code in msg:
-            print(msg[response.status_code])
-
-        else:
-            print(response.text)
-
-    except (httpx.RequestError, ValueError) as e:
-
-        raise SystemExit(f"❌ Terminating: {e}")
+    except httpx.HTTPError as e:
+        print(e)
 
 
-def get_user_data(ims_sid: str) -> dict:
+def get_user_data(session: httpx.Client, ims_sid: str) -> dict:
 
     url = "https://adobeid-na1.services.adobe.com/ims/check/v6/token?jslVersion=v2-v0.31.0-2-g1e8a8a8"
 
@@ -44,43 +25,30 @@ def get_user_data(ims_sid: str) -> dict:
         "scope": "account_type,openid,AdobeID,read_organizations",
     }
 
-    cookies = {
-        "ims_sid": ims_sid,
-    }
-
-    headers = {
-        "Origin": "https://substance3d.adobe.com",
-        "Referer": "https://substance3d.adobe.com/",
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-    }
-
-    user_data = error_handler_default(httpx.post(url, headers=headers, cookies=cookies, data=payload))
-
+    user_data = error_handler_default(session.post(url, data=payload))
     access_token = user_data['access_token']
-    purchased_assets = get_user_assets(token=access_token)
+    session.headers.update({"Authorization": f"Bearer {access_token}",})
+
+    purchased_assets = get_user_assets(session=session)
+    
     user_data["purchased_assets"] = purchased_assets
     
     return user_data
 
-def get_user_assets(token: str) -> list:
+def get_user_assets(session: httpx.Client) -> list:
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-    }
-    
     payload = {
         "query": USER_QUERY,
     }
 
-    user_query_json = error_handler_default(httpx.post('https://source-api.substance3d.com/beta/graphql', headers=headers, json=payload))
+    user_query_json = error_handler_default(session.post('https://source-api.substance3d.com/beta/graphql', json=payload))
 
-    # A list of already purchased assets by the user.
     purchased_assets = user_query_json['data']['account']['assetIds']
 
     return purchased_assets
 
 
-def get_collection_data(collection_id: str, page: int, limit: int) -> dict:
+def get_collection_data(session: httpx.Client, collection_id: str, page: int, limit: int) -> dict:
 
     payload = {
     
@@ -89,11 +57,10 @@ def get_collection_data(collection_id: str, page: int, limit: int) -> dict:
             "limit": limit,
             "page": page,
         },
-
         "query": COLLECTION_QUERY,
     }
 
-    collection_json = error_handler_default(httpx.post('https://source-api.substance3d.com/beta/graphql', json=payload))
+    collection_json = error_handler_default(session.post('https://source-api.substance3d.com/beta/graphql', json=payload))
 
     collection_title = collection_json['data']['collection']['title']
     collection_total = collection_json['data']['collection']['assets']["total"]
@@ -111,11 +78,7 @@ def get_collection_data(collection_id: str, page: int, limit: int) -> dict:
     return collection_data
 
 
-def purchase_asset(token: str, asset_id: str) -> dict:
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-    }
+def purchase_asset(session: httpx.Client, asset_id: str) -> dict:
 
     payload = {
         "operationName": "PurchaseAsset",
@@ -123,14 +86,15 @@ def purchase_asset(token: str, asset_id: str) -> dict:
         "query": PURCHASE_QUERY,
     }
 
-    reponse = error_handler_default(httpx.post('https://source-api.substance3d.com/beta/graphql', headers=headers, json=payload))
+    reponse = error_handler_default(session.post('https://source-api.substance3d.com/beta/graphql', json=payload))
     return reponse
 
 
-def download_attachment(url: str, token: str, file_name: str, file_path: str, file_size: int) -> None:
+def download_attachment(session: httpx.Client, url: str, token: str, file_name: str, file_path: str, file_size: int) -> None:
 
-    with httpx.stream('GET', f"{url}?accessToken={token}", follow_redirects=True) as download_response:
-        download_response.raise_for_status()
+    with session.stream('GET', f"{url}?accessToken={token}", follow_redirects=True) as download_response:
+        error_handler_default(download_response)
+        
         progress = tqdm(desc=file_name, total=file_size, unit='B', unit_scale=True, unit_divisor=1024, colour="green")  
 
         with open(file_path, "wb") as binaryfile:
